@@ -1,6 +1,6 @@
 def hello():
     for i in range(10):
-        print('hello!')
+        print('Здорова епты')
 
 
 if __name__ == "__main__":
