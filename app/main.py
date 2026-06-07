@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import asyncio
 
 app = FastAPI(title="Task Manager")
@@ -8,6 +8,13 @@ app = FastAPI(title="Task Manager")
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=2000)
+
+    @field_validator("title")
+    @classmethod
+    def title_must_not_start_with_space(cls, v: str) -> str:
+        if v.startswith(" "):
+            raise ValueError("title must not start with a space")
+        return v
 
 
 class Task(BaseModel):
@@ -25,6 +32,7 @@ class TaskUpdate(BaseModel):
 
 tasks: dict[int, Task] = {}
 next_id: int = 1
+MAX_TASKS = 100
 
 
 @app.get("/health")
@@ -35,6 +43,8 @@ async def health():
 @app.post("/tasks", response_model=Task)
 async def create_task(payload: TaskCreate):
     global next_id
+    if len(tasks) >= MAX_TASKS:
+        raise HTTPException(status_code=409, detail="task limit reached")
     task = Task(
         id=next_id,
         title=payload.title,
@@ -47,8 +57,11 @@ async def create_task(payload: TaskCreate):
 
 
 @app.get("/tasks", response_model=list[Task])
-async def list_tasks():
-    return list(tasks.values())
+async def list_tasks(done_only: bool = False):
+    result = list(tasks.values())
+    if done_only:
+        result = [task for task in result if task.done]
+    return result
 
 
 @app.get("/tasks/{task_id}", response_model=Task)
