@@ -1,8 +1,22 @@
+import logging
+
+from app.core.config import settings
+from app.core.logging import setup_logging
+
+
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 import asyncio
 
-app = FastAPI(title="Task Manager")
+setup_logging(settings.log_level)
+
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    debug=settings.debug,
+)
 
 
 class TaskCreate(BaseModel):
@@ -37,6 +51,7 @@ MAX_TASKS = 100
 
 @app.get("/health")
 async def health():
+    logger.info("Health check endpoint called")
     return {"status": "ok"}
 
 
