@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
 
-env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/task-api
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/task-api" >> $GITHUB_ENV
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
