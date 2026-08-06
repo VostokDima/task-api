@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 
 from app.schemas.predict import PredictRequest, PredictResponse
 
-MODEL_PATH = Path(__file__).resolve().parents[1] / "wine_model.pkl"
+MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "wine_model.pkl"
 CLASS_NAMES = ["class_0", "class_1", "class_2"]
 FEATURE_ORDER = [
     "alcohol", "malic_acid", "ash", "alcalinity_of_ash", "magnesium",
