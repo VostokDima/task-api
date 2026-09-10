@@ -1,3 +1,8 @@
+networks:
+  mentoring-net:
+    name: mentoring-net
+    external: false
+
 services:
   api:                              # имя сервиса; если бы добавляли БД, тут была бы вторая запись db:
     build: .                        # собирать из Dockerfile в текущей папке
@@ -5,7 +10,56 @@ services:
     container_name: task-api        # фиксированное имя контейнера, чтобы было удобно адресовать в docker logs/stop
     ports:
       - "8000:8000"                 # слева — порт ноутбука, справа — порт внутри контейнера. Кавычки обязательны
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
     environment:                    # переменные окружения для приложения внутри контейнера
       LOG_LEVEL: ${LOG_LEVEL:-INFO}   # значение из окружения хоста, по умолчанию INFO
       DEBUG: ${DEBUG:-false}
-    restart: unless-stopped         # если контейнер упал — Docker сам перезапустит (но не если вы остановили его руками)
+      # .env на хосте держит localhost (для Anaconda/REPL). В контейнере — DNS-имя сервиса.
+      QDRANT_URL: http://qdrant:6333
+      NO_PROXY: localhost,127.0.0.1,qdrant
+      no_proxy: localhost,127.0.0.1,qdrant
+    restart: unless-stopped
+    networks:
+      - mentoring-net
+    depends_on:
+      - qdrant
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    networks:
+      - mentoring-net
+    restart: unless-stopped
+
+  # HTTPS-фронт для прода. profiles: локальный `docker compose up` его
+  # НЕ поднимает — на ноуте нет публичного домена, и Let's Encrypt
+  # зафейлит challenge. На VPS: docker compose --profile prod up -d
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: caddy
+    profiles: ["prod"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      RAG_DOMAIN: ${RAG_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # сертификаты; без volume LE-лимиты выжигаются на пересозданиях
+      - caddy_config:/config
+    networks:
+      - mentoring-net
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

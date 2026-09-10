@@ -1,11 +1,31 @@
-name: Deploy
+name: CI/CD
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest tests/ -v
+        env:
+          # Только секрет. Остальное (base URL, model, top_k, эмбеддер) —
+          # дефолты из app/config.py, общие для CI / локали / прода.
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          QDRANT_URL: http://localhost:6333
+
   deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,20 +49,35 @@ jobs:
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Copy compose to VPS
+        uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml,Caddyfile"
+          target: /opt/mentoring/rag-service
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
+            cd /opt/mentoring/rag-service
+            # Только секреты. Имя модели, base URL, top_k и т.д.
+            # — дефолты из app/config.py.
+            cat > .env << EOF
+            LLM_API_KEY=${{ secrets.LLM_API_KEY }}
+            QDRANT_URL=http://qdrant:6333
+            RAG_DOMAIN=${{ secrets.RAG_DOMAIN }}
+            EOF
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ${{ env.IMAGE }}:latest
-            docker rm -f task-api 2>/dev/null || true
-            docker run -d \
-              --name task-api \
-              --restart unless-stopped \
-              -p 127.0.0.1:8000:8000 \
-              -e LOG_LEVEL=INFO \
-              ${{ env.IMAGE }}:latest
+            docker tag ${{ env.IMAGE }}:latest task-api:latest
+            # --profile prod поднимает ещё и caddy (HTTPS-фронт).
+            # Без профиля compose счёл бы caddy лишним и остановил его.
+            docker compose --profile prod up -d
             docker logout ghcr.io

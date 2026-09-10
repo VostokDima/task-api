@@ -1,0 +1,12 @@
+# Caddy сам получает Let's Encrypt-сертификат по HTTP-01 challenge (порт 80),
+# поэтому домен обязан резолвиться в IP этой машины. nip.io делает это
+# без своей DNS-зоны: 92-242-60-220.nip.io -> 92.242.60.220.
+{$RAG_DOMAIN} {
+	encode zstd gzip
+
+	# flush_interval -1 — не буферизовать ответ. Без него SSE-стрим
+	# (Gradio queue и токены LLM) доедет до браузера одним куском в конце.
+	reverse_proxy api:8000 {
+		flush_interval -1
+	}
+}
