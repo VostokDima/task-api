@@ -1,0 +1,20 @@
+============================================================
+Q: What is the difference between Lasso and Ridge?
+A: The main difference between Lasso and Ridge is the type of regularization they use. Lasso uses L1 regularization, which can set coefficients to zero, resulting in a sparse model [3]. Ridge, on the other hand, uses L2 regularization, which does not set coefficients to zero, but instead shrinks them towards zero [1]. This means that Lasso is more likely to select a subset of features and set the others to zero, while Ridge will reduce the magnitude of all coefficients, but not set any to zero [2]. 
+
+In mathematical terms, the objective function of Lasso is \(\min_{w} {\frac{1}{2n_{\text{samples}}} ||X w - y||_2 ^ 2 + \alpha ||w||_1}\) [4], while the objective function of Ridge is \(\min_{w} {\frac{1}{2n_{\text{samples}}} ||X w - y||_2 ^ 2 + \alpha ||w||_2 ^ 2}\) [1]. 
+
+Elastic Net is a combination of both L1 and L2 regularization, and can be used to trade off between the two [2]. 
+
+References: 
+[1] https://scikit-learn.org/stable/modules/linear_model.html
+[2] https://scikit-learn.org/stable/modules/linear_model.html
+[3] https://scikit-learn.org/stable/modules/linear_model.html
+[4] https://scikit-learn.org/stable/modules/linear_model.html
+
+============================================================
+Q: How do I tune the alpha parameter in Ridge?
+A: To tune the alpha parameter in Ridge, you can use RidgeCV, which implements ridge regression with built-in cross-validation of the alpha parameter [4]. RidgeCV works in the same way as GridSearchCV, except that it defaults to efficient Leave-One-Out cross-validation [4]. You can specify the range of alpha values to try using the `alphas` parameter, as shown in the example: `reg = linear_model.RidgeCV(alphas=np.logspace(-6, 6, 13))` [4]. This allows you to find the optimal value of alpha for your specific problem. Note that when using the default cross-validation, alpha cannot be 0 due to the formulation used to calculate Leave-One-Out error [4].
+
+============================================================
+Q: Tell me what is the regularization strength parameter

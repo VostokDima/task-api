@@ -220,3 +220,10 @@ __marimo__/
 # Gradio local cache / flagged examples
 .gradio/
 
+# Qdrant local storage
+qdrant_data/
+
+# Generated ingest corpus (directory itself is tracked)
+data/local/corpus_chunks.jsonl
+
+

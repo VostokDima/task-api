@@ -12,3 +12,6 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "smoke: live checks against a running RAG (set RAG_SMOKE_URL)",
+]
