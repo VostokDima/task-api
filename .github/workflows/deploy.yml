@@ -1,3 +1,4 @@
+
 name: CI/CD
 
 on:
@@ -71,8 +72,11 @@ jobs:
             # — дефолты из app/config.py.
             cat > .env << EOF
             LLM_API_KEY=${{ secrets.LLM_API_KEY }}
+            LLM_BASE_URL=https://router.huggingface.co/v1
+            LLM_MODEL=meta-llama/Llama-3.3-70B-Instruct
             QDRANT_URL=http://qdrant:6333
             RAG_DOMAIN=${{ secrets.RAG_DOMAIN }}
+            ENABLE_WEB_SEARCH=true
             EOF
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ${{ env.IMAGE }}:latest
@@ -80,4 +84,6 @@ jobs:
             # --profile prod поднимает ещё и caddy (HTTPS-фронт).
             # Без профиля compose счёл бы caddy лишним и остановил его.
             docker compose --profile prod up -d
+            # Иначе через 8–10 деплоев диск забивается старыми untagged-образами.
+            docker image prune -f
             docker logout ghcr.io
